@@ -87,7 +87,7 @@ class SourceMapper(val sourceInfo: SourceInfo?) {
     init {
         sourceInfo?.let {
             // Explicitly map the file to itself -- we'll probably need a lot of lines from it, so this will produce fewer ranges.
-            getOrRegisterNewSource(it.source, it.pathOrCleanFQN).mapNewInterval(1, 1, it.linesInFile)
+            getOrRegisterNewSource(it.fileEntryName, it.pathOrCleanFQN).mapNewInterval(1, 1, it.linesInFile)
         }
     }
 
@@ -132,7 +132,7 @@ class FileMapping(val name: String, val path: String) {
     val lineMappings = arrayListOf<RangeMapping>()
 
     fun toSourceInfo(): SourceInfo =
-        SourceInfo(name, path, lineMappings.fold(0) { result, mapping -> max(result, mapping.source + mapping.range - 1) })
+        SourceInfo(name, path, lineMappings.fold(0) { result, mapping -> max(result, mapping.source + mapping.range - 1) }, name)
 
     fun mapNewLineNumber(source: Int, currentIndex: Int, callSite: SourcePosition?): Int {
         // Save some space in the SMAP by reusing (or extending if it's the last one) the existing range.
