@@ -70,7 +70,7 @@ open class DefaultArgumentStubGenerator(
         log { "$irFunction -> $newIrFunction" }
         val builder = context.createIrBuilder(newIrFunction.symbol)
 
-        newIrFunction.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+        newIrFunction.body = context.irFactory.createBlockBody(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
             statements += builder.irBlockBody(newIrFunction) {
                 val params = mutableListOf<IrValueDeclaration>()
                 val variables = mutableMapOf<IrValueDeclaration, IrValueDeclaration>()
@@ -435,8 +435,9 @@ class DefaultParameterCleaner(
         if (declaration is IrValueParameter && declaration.defaultValue != null) {
             if (replaceDefaultValuesWithStubs) {
                 if (context.mapping.defaultArgumentsOriginalFunction[declaration.parent as IrFunction] == null) {
-                    declaration.defaultValue =
-                        IrExpressionBodyImpl(IrErrorExpressionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, declaration.type, "Default Stub"))
+                    declaration.defaultValue = context.irFactory.createExpressionBody(
+                        IrErrorExpressionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, declaration.type, "Default Stub")
+                    )
                 }
             } else {
                 declaration.defaultValue = null
@@ -527,7 +528,7 @@ private fun IrFunction.generateDefaultsFunctionImpl(
 ): IrFunction {
     val newFunction = when (this) {
         is IrConstructor ->
-            buildConstructor {
+            factory.buildConstructor {
                 updateFrom(this@generateDefaultsFunctionImpl)
                 origin = newOrigin
                 isExternal = false
@@ -536,7 +537,7 @@ private fun IrFunction.generateDefaultsFunctionImpl(
                 visibility = newVisibility
             }
         is IrSimpleFunction ->
-            buildFun(descriptor) {
+            factory.buildFun(descriptor) {
                 updateFrom(this@generateDefaultsFunctionImpl)
                 name = Name.identifier("${this@generateDefaultsFunctionImpl.name}\$default")
                 origin = newOrigin
@@ -562,10 +563,9 @@ private fun IrFunction.generateDefaultsFunctionImpl(
             newFunction,
             type = if (makeNullable) newType.makeNullable() else newType,
             defaultValue = if (it.defaultValue != null) {
-                IrExpressionBodyImpl(IrErrorExpressionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, it.type, "Default Stub"))
+                factory.createExpressionBody(IrErrorExpressionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, it.type, "Default Stub"))
             } else null
         )
-
     }
 
     for (i in 0 until (valueParameters.size + 31) / 32) {

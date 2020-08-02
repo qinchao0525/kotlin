@@ -22,7 +22,10 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.descriptors.IrImplementingDelegateDescriptorImpl
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
-import org.jetbrains.kotlin.ir.expressions.impl.*
+import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetFieldImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrReturnImpl
 import org.jetbrains.kotlin.ir.expressions.mapValueParameters
 import org.jetbrains.kotlin.ir.expressions.putTypeArguments
 import org.jetbrains.kotlin.ir.expressions.typeParametersCount
@@ -85,7 +88,7 @@ class ClassGenerator(
         val modality = getEffectiveModality(ktClassOrObject, classDescriptor)
 
         return context.symbolTable.declareClass(classDescriptor) {
-            createIrClassFromDescriptor(
+            context.irFactory.createIrClassFromDescriptor(
                 startOffset, endOffset, IrDeclarationOrigin.DEFINED, it, classDescriptor,
                 context.symbolTable.nameProvider.nameForDeclaration(classDescriptor), visibility, modality
             ).apply {
@@ -324,7 +327,7 @@ class ClassGenerator(
         val startOffset = irDelegate.startOffset
         val endOffset = irDelegate.endOffset
 
-        val irBlockBody = IrBlockBodyImpl(startOffset, endOffset)
+        val irBlockBody = context.irFactory.createBlockBody(startOffset, endOffset)
 
         val substitutedDelegateTo = substituteDelegateToDescriptor(delegatedDescriptor, delegateToDescriptor)
         val returnType = substitutedDelegateTo.returnType!!
@@ -498,7 +501,7 @@ class ClassGenerator(
 
             if (!enumEntryDescriptor.isExpect) {
                 irEnumEntry.initializerExpression =
-                    IrExpressionBodyImpl(createBodyGenerator(irEnumEntry.symbol)
+                    context.irFactory.createExpressionBody(createBodyGenerator(irEnumEntry.symbol)
                         .generateEnumEntryInitializer(ktEnumEntry, enumEntryDescriptor))
             }
 

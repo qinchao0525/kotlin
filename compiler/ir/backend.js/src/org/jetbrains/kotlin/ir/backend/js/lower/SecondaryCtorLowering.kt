@@ -17,9 +17,13 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
+import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.expressions.impl.*
+import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrRawFunctionReferenceImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrReturnImpl
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
@@ -30,6 +34,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
+import org.jetbrains.kotlin.name.Name
 
 class SecondaryConstructorLowering(val context: JsIrBackendContext) : DeclarationTransformer {
 
@@ -81,7 +86,7 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : Declaratio
     }
 
     private fun generateFactoryBody(constructor: IrConstructor, irClass: IrClass, stub: IrSimpleFunction, delegate: IrSimpleFunction) {
-        stub.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+        stub.body = context.irFactory.createBlockBody(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
             val type = irClass.defaultType
             val createFunctionIntrinsic = context.intrinsics.jsObjectCreate
             val irCreateCall = JsIrBuilder.buildCall(createFunctionIntrinsic.symbol, type, listOf(type))
@@ -128,7 +133,7 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : Declaratio
         val oldValueParameters = constructor.valueParameters + oldThisReceiver
 
         // TODO: replace parameters as well
-        delegate.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+        delegate.body = context.irFactory.createBlockBody(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
             statements += (constructorBody.deepCopyWithSymbols(delegate) as IrStatementContainer).statements
             statements += JsIrBuilder.buildReturn(delegate.symbol, JsIrBuilder.buildGetValue(thisParam.symbol), context.irBuiltIns.nothingType)
             transformChildrenVoid(ThisUsageReplaceTransformer(delegate.symbol, oldValueParameters.zip(delegate.valueParameters).toMap()))
@@ -164,19 +169,20 @@ private fun JsIrBackendContext.buildInitDeclaration(constructor: IrConstructor, 
     val constructorName = "${irClass.name}_init"
     val functionName = "${constructorName}_\$Init\$"
 
-    return jsIrDeclarationBuilder.buildFunction(
-        functionName,
-        type,
-        constructor.parent,
-        Visibilities.INTERNAL,
-        Modality.FINAL,
-        constructor.isInline,
-        constructor.isExternal
-    ).also {
+    return irFactory.buildFun {
+        name = Name.identifier(functionName)
+        returnType = type
+        visibility = Visibilities.INTERNAL
+        modality = Modality.FINAL
+        isInline = constructor.isInline
+        isExternal = constructor.isExternal
+        origin = JsIrBuilder.SYNTHESIZED_DECLARATION
+    }.also {
+        it.parent = constructor.parent
         it.copyTypeParametersFrom(constructor.parentAsClass)
 
         it.valueParameters = constructor.valueParameters.map { p -> p.copyTo(it) }
-        it.valueParameters += jsIrDeclarationBuilder.buildValueParameter(it, "\$this", constructor.valueParameters.size, type)
+        it.valueParameters += JsIrBuilder.buildValueParameter(it, "\$this", constructor.valueParameters.size, type)
     }
 }
 
@@ -185,15 +191,15 @@ private fun JsIrBackendContext.buildFactoryDeclaration(constructor: IrConstructo
     val constructorName = "${irClass.name}_init"
     val functionName = "${constructorName}_\$Create\$"
 
-    return jsIrDeclarationBuilder.buildFunction(
-        functionName,
-        type,
-        constructor.parent,
-        constructor.visibility,
-        Modality.FINAL,
-        constructor.isInline,
-        constructor.isExternal
-    ).also { factory ->
+    return irFactory.buildFun {
+        name = Name.identifier(functionName)
+        returnType = type
+        visibility = constructor.visibility
+        modality = Modality.FINAL
+        isInline = constructor.isInline
+        isExternal = constructor.isExternal
+    }.also { factory ->
+        factory.parent = constructor.parent
         factory.copyTypeParametersFrom(constructor.parentAsClass)
         factory.valueParameters += constructor.valueParameters.map { p -> p.copyTo(factory) }
         factory.annotations = constructor.annotations

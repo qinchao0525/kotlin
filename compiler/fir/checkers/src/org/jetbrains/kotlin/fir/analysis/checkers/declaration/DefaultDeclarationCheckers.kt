@@ -5,18 +5,28 @@
 
 package org.jetbrains.kotlin.fir.analysis.checkers.declaration
 
+import org.jetbrains.kotlin.fir.analysis.cfa.FirPropertyInitializationAnalyzer
+import org.jetbrains.kotlin.fir.analysis.checkers.cfa.FirControlFlowChecker
+
 object CommonDeclarationCheckers : DeclarationCheckers() {
     override val declarationCheckers: List<FirBasicDeclarationChecker> = listOf(
         FirAnnotationClassDeclarationChecker,
-        FirModifierChecker
+        FirModifierChecker,
+        FirManyCompanionObjectsChecker,
+        FirLocalEntityNotAllowedChecker,
+        FirTypeParametersInObjectChecker,
     )
 
     override val memberDeclarationCheckers: List<FirMemberDeclarationChecker> = listOf(
         FirInfixFunctionDeclarationChecker,
-        FirExposedVisibilityChecker
+        FirExposedVisibilityDeclarationChecker,
     )
 
     override val constructorCheckers: List<FirConstructorChecker> = listOf(
         FirConstructorAllowedChecker
+    )
+
+    override val controlFlowAnalyserCheckers: List<FirControlFlowChecker> = listOf(
+        FirPropertyInitializationAnalyzer
     )
 }

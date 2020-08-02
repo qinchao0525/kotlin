@@ -5,10 +5,8 @@
 
 package org.jetbrains.kotlin.fir.analysis.checkers.declaration
 
-import org.jetbrains.kotlin.fir.analysis.checkers.extended.RedundantExplicitTypeChecker
-import org.jetbrains.kotlin.fir.analysis.checkers.extended.RedundantModalityModifierChecker
-import org.jetbrains.kotlin.fir.analysis.checkers.extended.RedundantReturnUnitType
-import org.jetbrains.kotlin.fir.analysis.checkers.extended.RedundantVisibilityModifierChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.cfa.FirControlFlowChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.extended.*
 
 object ExtendedDeclarationCheckers : DeclarationCheckers() {
     override val declarationCheckers = listOf(
@@ -21,4 +19,7 @@ object ExtendedDeclarationCheckers : DeclarationCheckers() {
         RedundantExplicitTypeChecker
     )
 
+    override val controlFlowAnalyserCheckers: List<FirControlFlowChecker> = listOf(
+        VariableAssignmentChecker
+    )
 }

@@ -43,10 +43,11 @@ class JvmCachedDeclarations(
     private val defaultImplsMethods = HashMap<IrSimpleFunction, IrSimpleFunction>()
     private val defaultImplsClasses = HashMap<IrClass, IrClass>()
     private val defaultImplsRedirections = HashMap<IrSimpleFunction, IrSimpleFunction>()
+    private val defaultImplsOriginalMethods = HashMap<IrSimpleFunction, IrSimpleFunction>()
 
     fun getFieldForEnumEntry(enumEntry: IrEnumEntry): IrField =
         singletonFieldDeclarations.getOrPut(enumEntry) {
-            buildField {
+            context.irFactory.buildField {
                 setSourceRange(enumEntry)
                 name = enumEntry.name
                 type = enumEntry.parentAsClass.defaultType
@@ -66,7 +67,7 @@ class JvmCachedDeclarations(
                 languageVersionSettings.supportsFeature(LanguageFeature.ProperVisibilityForCompanionObjectInstanceField)
                         && singleton.isCompanion
                         && !singleton.parentAsClass.isInterface
-            buildField {
+            context.irFactory.buildField {
                 name = if (isNotMappedCompanion) singleton.name else Name.identifier(JvmAbi.INSTANCE_FIELD)
                 type = singleton.defaultType
                 origin = IrDeclarationOrigin.FIELD_FOR_OBJECT_INSTANCE
@@ -86,7 +87,7 @@ class JvmCachedDeclarations(
     fun getPrivateFieldForObjectInstance(singleton: IrClass): IrField =
         if (singleton.isCompanion && singleton.parentAsClass.isJvmInterface)
             interfaceCompanionFieldDeclarations.getOrPut(singleton) {
-                buildField {
+                context.irFactory.buildField {
                     name = Name.identifier("\$\$INSTANCE")
                     type = singleton.defaultType
                     origin = JvmLoweredDeclarationOrigin.INTERFACE_COMPANION_PRIVATE_INSTANCE
@@ -108,7 +109,7 @@ class JvmCachedDeclarations(
         val oldParent = irProperty.parent as? IrClass ?: return null
         if (!oldParent.isObject) return null
         return staticBackingFields.getOrPut(irProperty) {
-            buildField {
+            context.irFactory.buildField {
                 updateFrom(oldField)
                 name = oldField.name
                 isStatic = true
@@ -138,7 +139,7 @@ class JvmCachedDeclarations(
             val defaultImpls = getDefaultImplsClass(interfaceFun.parentAsClass)
 
             val name = Name.identifier(methodSignatureMapper.mapFunctionName(interfaceFun))
-            createStaticFunctionWithReceivers(
+            context.irFactory.createStaticFunctionWithReceivers(
                 defaultImpls, name, interfaceFun,
                 dispatchReceiverType = parent.defaultType,
                 // If `interfaceFun` is not a real implementation, then we're generating stubs in a descendant
@@ -176,13 +177,18 @@ class JvmCachedDeclarations(
                         it.annotations += irCall(this@JvmCachedDeclarations.context.ir.symbols.javaLangDeprecatedConstructor)
                     }
                 }
+
+                defaultImplsOriginalMethods[it] = interfaceFun
             }
         }
     }
 
+    fun getOriginalFunctionForDefaultImpl(defaultImplFun: IrSimpleFunction) =
+        defaultImplsOriginalMethods[defaultImplFun]
+
     fun getDefaultImplsClass(interfaceClass: IrClass): IrClass =
         defaultImplsClasses.getOrPut(interfaceClass) {
-            buildClass {
+            context.irFactory.buildClass {
                 startOffset = interfaceClass.startOffset
                 endOffset = interfaceClass.endOffset
                 origin = JvmLoweredDeclarationOrigin.DEFAULT_IMPLS
@@ -197,7 +203,7 @@ class JvmCachedDeclarations(
         defaultImplsRedirections.getOrPut(fakeOverride) {
             assert(fakeOverride.isFakeOverride)
             val irClass = fakeOverride.parentAsClass
-            buildFun(fakeOverride.descriptor) {
+            context.irFactory.buildFun(fakeOverride.descriptor) {
                 origin = JvmLoweredDeclarationOrigin.DEFAULT_IMPLS_BRIDGE
                 name = fakeOverride.name
                 visibility = fakeOverride.visibility

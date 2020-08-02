@@ -18,9 +18,9 @@ import org.jetbrains.kotlin.ir.backend.js.JsLoweredDeclarationOrigin
 import org.jetbrains.kotlin.ir.backend.js.utils.functionSignature
 import org.jetbrains.kotlin.ir.backend.js.utils.getJsName
 import org.jetbrains.kotlin.ir.builders.*
+import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.util.*
@@ -118,20 +118,17 @@ class BridgesConstruction(val context: JsCommonBackendContext) : DeclarationTran
                 IrDeclarationOrigin.BRIDGE
 
         // TODO: Support offsets for debug info
-        val irFunction = context.jsIrDeclarationBuilder.buildFunction(
-            bridge.name,
-            bridge.returnType,
-            function.parent,
-            bridge.visibility,
-            Modality.FINAL,
-            isInline = bridge.isInline,
-            isExternal = bridge.isExternal,
-            isTailrec = bridge.isTailrec,
-            isSuspend = bridge.isSuspend,
-            isExpect = bridge.isExpect,
-            isFakeOverride = false,
-            origin = origin
-        ).apply {
+        val irFunction = context.irFactory.buildFun {
+            updateFrom(bridge)
+            this.startOffset = UNDEFINED_OFFSET
+            this.endOffset = UNDEFINED_OFFSET
+            this.name = bridge.name
+            this.returnType = bridge.returnType
+            this.modality = Modality.FINAL
+            this.isFakeOverride = false
+            this.origin = origin
+        }.apply {
+            parent = function.parent
             copyTypeParametersFrom(bridge)
             copyReceiverParametersFrom(bridge)
             valueParameters += bridge.valueParameters.map { p -> p.copyTo(this) }
@@ -140,7 +137,7 @@ class BridgesConstruction(val context: JsCommonBackendContext) : DeclarationTran
             overriddenSymbols += bridge.symbol
         }
 
-        irFunction.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+        irFunction.body = context.irFactory.createBlockBody(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
             statements += context.createIrBuilder(irFunction.symbol).irBlockBody(irFunction) {
                 if (specialMethodInfo != null) {
                     irFunction.valueParameters.take(specialMethodInfo.argumentsToCheck).forEach {

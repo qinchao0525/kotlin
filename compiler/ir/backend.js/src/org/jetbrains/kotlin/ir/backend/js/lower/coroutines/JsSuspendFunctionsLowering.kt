@@ -15,7 +15,10 @@ import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
-import org.jetbrains.kotlin.ir.symbols.*
+import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrValueSymbol
+import org.jetbrains.kotlin.ir.symbols.IrVariableSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.explicitParameters
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
@@ -89,9 +92,9 @@ class JsSuspendFunctionsLowering(ctx: JsIrBackendContext) : AbstractSuspendFunct
             body.endOffset,
             unit,
             COROUTINE_ROOT_LOOP,
-            rootTry,
-            JsIrBuilder.buildBoolean(context.irBuiltIns.booleanType, true)
         ).also {
+            it.condition = JsIrBuilder.buildBoolean(context.irBuiltIns.booleanType, true)
+            it.body = rootTry
             it.label = "\$sm"
         }
 
@@ -135,8 +138,9 @@ class JsSuspendFunctionsLowering(ctx: JsIrBackendContext) : AbstractSuspendFunct
             })
         }
 
-        val functionBody =
-            IrBlockBodyImpl(stateMachineFunction.startOffset, stateMachineFunction.endOffset, listOf(suspendResult, rootLoop))
+        val functionBody = context.irFactory.createBlockBody(
+            stateMachineFunction.startOffset, stateMachineFunction.endOffset, listOf(suspendResult, rootLoop)
+        )
 
         stateMachineFunction.body = functionBody
 

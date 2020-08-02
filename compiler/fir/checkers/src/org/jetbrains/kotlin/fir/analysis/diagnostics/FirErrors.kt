@@ -19,7 +19,9 @@ import org.jetbrains.kotlin.psi.*
 
 object FirErrors {
     val UNRESOLVED_REFERENCE by error1<FirSourceElement, PsiElement, String>()
-    val INAPPLICABLE_CANDIDATE by error1<FirSourceElement, PsiElement, Collection<AbstractFirBasedSymbol<*>>>()
+    val HIDDEN by error1<FirSourceElement, PsiElement, AbstractFirBasedSymbol<*>>()
+    val NONE_APPLICABLE by error1<FirSourceElement, PsiElement, Collection<AbstractFirBasedSymbol<*>>>()
+    val INAPPLICABLE_CANDIDATE by error1<FirSourceElement, PsiElement, AbstractFirBasedSymbol<*>>()
     val AMBIGUITY by error1<FirSourceElement, PsiElement, Collection<AbstractFirBasedSymbol<*>>>()
     val ASSIGN_OPERATOR_AMBIGUITY by error1<FirSourceElement, PsiElement, Collection<AbstractFirBasedSymbol<*>>>()
     val SYNTAX_ERROR by error0<FirSourceElement, PsiElement>()
@@ -79,6 +81,11 @@ object FirErrors {
     val PROJECTION_ON_NON_CLASS_TYPE_ARGUMENT by error0<FirSourceElement, PsiElement>()
     val UPPER_BOUND_VIOLATED by error0<FirSourceElement, PsiElement>()
 
+    val MANY_COMPANION_OBJECTS by error0<FirSourceElement, PsiElement>()
+    val LOCAL_OBJECT_NOT_ALLOWED by error0<FirSourceElement, PsiElement>()
+    val LOCAL_INTERFACE_NOT_ALLOWED by error0<FirSourceElement, PsiElement>()
+    val TYPE_PARAMETERS_IN_OBJECT by error0<FirSourceElement, PsiElement>()
+
     // Control flow diagnostics
     val UNINITIALIZED_VARIABLE by error1<FirSourceElement, PsiElement, FirPropertySymbol>()
 
@@ -87,6 +94,11 @@ object FirErrors {
     val REDUNDANT_MODALITY_MODIFIER by warning0<FirSourceElement, PsiElement>()
     val REDUNDANT_RETURN_UNIT_TYPE by warning0<FirSourceElement, PsiTypeElement>()
     val REDUNDANT_EXPLICIT_TYPE by warning0<FirSourceElement, PsiElement>()
+    val REDUNDANT_SINGLE_EXPRESSION_STRING_TEMPLATE by warning0<FirSourceElement, PsiElement>()
+    val CAN_BE_VAL by warning0<FirSourceElement, PsiElement>()
+    val CAN_BE_REPLACED_WITH_OPERATOR_ASSIGNMENT by warning0<FirSourceElement, PsiElement>()
+    val ARRAY_EQUALITY_OPERATOR_CAN_BE_REPLACED_WITH_EQUALS by warning0<FirSourceElement, PsiElement>()
+    val EMPTY_RANGE by warning0<FirSourceElement, PsiElement>()
 }
 
 

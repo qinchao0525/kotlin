@@ -178,7 +178,7 @@ extra["versions.jflex"] = "1.7.0"
 extra["versions.markdown"] = "0.1.25"
 extra["versions.trove4j"] = "1.0.20181211"
 extra["versions.completion-ranking-kotlin"] = "0.1.2"
-extra["versions.r8"] = "1.5.70"
+extra["versions.r8"] = "2.0.88"
 val immutablesVersion = "0.3.1"
 extra["versions.kotlinx-collections-immutable"] = immutablesVersion
 extra["versions.kotlinx-collections-immutable-jvm"] = immutablesVersion
@@ -229,6 +229,8 @@ extra["compilerModules"] = arrayOf(
     ":compiler:frontend.java",
     ":compiler:cli-common",
     ":compiler:ir.tree",
+    ":compiler:ir.tree.impl",
+    ":compiler:ir.tree.persistent",
     ":compiler:ir.psi2ir",
     ":compiler:ir.backend.common",
     ":compiler:backend.jvm",

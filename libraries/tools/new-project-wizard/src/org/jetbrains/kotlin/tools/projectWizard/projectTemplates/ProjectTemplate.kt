@@ -27,7 +27,7 @@ sealed class ProjectTemplate : DisplayableSettingItem {
     abstract val id: String
 
     private val setsDefaultValues: List<SettingWithValue<*, *>>
-        get() = listOf(KotlinPlugin::projectKind.reference withValue projectKind)
+        get() = listOf(KotlinPlugin.projectKind.reference withValue projectKind)
 
     protected open val setsPluginSettings: List<SettingWithValue<*, *>> = emptyList()
     protected open val setsModules: List<Module> = emptyList()
@@ -36,7 +36,7 @@ sealed class ProjectTemplate : DisplayableSettingItem {
     val setsValues: List<SettingWithValue<*, *>>
         get() = buildList {
             setsModules.takeIf { it.isNotEmpty() }?.let { modules ->
-                +(KotlinPlugin::modules withValue modules)
+                +(KotlinPlugin.modules.reference withValue modules)
             }
             +setsDefaultValues
             +setsPluginSettings
@@ -103,7 +103,7 @@ class TemplateSettingsBuilder<Q : Template>(
 class ConfiguratorSettingsBuilder<C : ModuleConfigurator>(
     val module: Module,
     val configurator: C
-) : ModuleConfiguratorSettingsEnvironment by ModuleBasedConfiguratorSettingsEnvironment(configurator, module) {
+) : ModuleConfiguratorContext by ModuleBasedConfiguratorContext(configurator, module) {
     init {
         assert(module.configurator === configurator)
     }
@@ -122,10 +122,6 @@ data class SettingWithValue<V : Any, T : SettingType<V>>(val setting: SettingRef
 
 infix fun <V : Any, T : SettingType<V>> PluginSettingReference<V, T>.withValue(value: V): SettingWithValue<V, T> =
     SettingWithValue(this, value)
-
-inline infix fun <V : Any, reified T : SettingType<V>> PluginSettingPropertyReference<V, T>.withValue(
-    value: V
-): SettingWithValue<V, T> = reference.withValue(value)
 
 private fun createDefaultSourcesets() =
     SourcesetType.values().map { sourcesetType ->
@@ -150,7 +146,7 @@ object BackendApplicationProjectTemplate : ProjectTemplate() {
 
     override val setsPluginSettings: List<SettingWithValue<*, *>>
         get() = listOf(
-            KotlinPlugin::modules withValue listOf(
+            KotlinPlugin.modules.reference withValue listOf(
                 SingleplatformModule("mainModule", createDefaultSourcesets())
             )
         )
@@ -167,7 +163,7 @@ object MultiplatformApplicationProjectTemplate : ProjectTemplate() {
 
     override val setsPluginSettings: List<SettingWithValue<*, *>>
         get() = listOf(
-            KotlinPlugin::modules withValue listOf(
+            KotlinPlugin.modules.reference withValue listOf(
                 MultiplatformModule("mainModule", listOf(ModuleType.common.createDefaultTarget()))
             )
         )
@@ -184,7 +180,7 @@ object ConsoleApplicationProjectTemplate : ProjectTemplate() {
 
     override val setsPluginSettings: List<SettingWithValue<*, *>>
         get() = listOf(
-            KotlinPlugin::modules withValue listOf(
+            KotlinPlugin.modules.reference withValue listOf(
                 SingleplatformModule(
                     "consoleApp",
                     createDefaultSourcesets()
@@ -206,7 +202,7 @@ object MultiplatformLibraryProjectTemplate : ProjectTemplate() {
 
     override val setsPluginSettings: List<SettingWithValue<*, *>>
         get() = listOf(
-            KotlinPlugin::modules withValue listOf(
+            KotlinPlugin.modules.reference withValue listOf(
                 MultiplatformModule(
                     "library",
                     listOf(
@@ -231,7 +227,7 @@ object FullStackWebApplicationProjectTemplate : ProjectTemplate() {
     override val suggestedProjectName: String = "myFullStackApplication"
     override val projectKind: ProjectKind = ProjectKind.Multiplatform
     override val setsPluginSettings: List<SettingWithValue<*, *>> = listOf(
-        KotlinPlugin::modules withValue listOf(
+        KotlinPlugin.modules.reference withValue listOf(
             MultiplatformModule(
                 "application",
                 listOf(
@@ -261,7 +257,7 @@ object NativeApplicationProjectTemplate : ProjectTemplate() {
 
     override val setsPluginSettings: List<SettingWithValue<*, *>>
         get() = listOf(
-            KotlinPlugin::modules withValue listOf(
+            KotlinPlugin.modules.reference withValue listOf(
                 Module(
                     "app",
                     MppModuleConfigurator,
@@ -288,7 +284,7 @@ object FrontendApplicationProjectTemplate : ProjectTemplate() {
 
     override val setsPluginSettings: List<SettingWithValue<*, *>>
         get() = listOf(
-            KotlinPlugin::modules withValue listOf(
+            KotlinPlugin.modules.reference withValue listOf(
                 Module(
                     "frontend",
                     BrowserJsSinglePlatformModuleConfigurator,
@@ -327,14 +323,13 @@ object MultiplatformMobileApplicationProjectTemplate : ProjectTemplate() {
                 },
                 Module(
                     "ios",
-                    RealNativeTargetConfigurator.configuratorsByModuleType.getValue(ModuleSubType.iosX64),
+                    RealNativeTargetConfigurator.configuratorsByModuleType.getValue(ModuleSubType.ios),
                     null,
                     sourcesets = createDefaultSourcesets(),
                     subModules = emptyList()
                 )
             )
         )
-        +shared
         +Module(
             "iosApp",
             IOSSinglePlatformModuleConfigurator,
@@ -351,6 +346,7 @@ object MultiplatformMobileApplicationProjectTemplate : ProjectTemplate() {
             subModules = emptyList(),
             dependencies = mutableListOf(ModuleReference.ByModule(shared))
         )
+        +shared // shared module must be the last so dependent modules could create actual files
     }
 }
 
@@ -365,7 +361,7 @@ object MultiplatformMobileLibraryProjectTemplate : ProjectTemplate() {
 
     override val setsPluginSettings: List<SettingWithValue<*, *>>
         get() = listOf(
-            KotlinPlugin::modules withValue listOf(
+            KotlinPlugin.modules.reference withValue listOf(
                 MultiplatformModule(
                     "library",
                     listOf(
@@ -407,7 +403,7 @@ object NodeJsApplicationProjectTemplate : ProjectTemplate() {
 
     override val setsPluginSettings: List<SettingWithValue<*, *>>
         get() = listOf(
-            KotlinPlugin::modules withValue listOf(
+            KotlinPlugin.modules.reference withValue listOf(
                 Module(
                     "nodejsApp",
                     NodeJsSinglePlatformModuleConfigurator,

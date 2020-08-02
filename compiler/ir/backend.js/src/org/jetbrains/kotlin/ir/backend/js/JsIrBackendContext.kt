@@ -15,14 +15,16 @@ import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.ir.*
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
-import org.jetbrains.kotlin.ir.backend.js.ir.JsIrDeclarationBuilder
 import org.jetbrains.kotlin.ir.backend.js.lower.JsInnerClassesSupport
 import org.jetbrains.kotlin.ir.backend.js.utils.OperatorNames
+import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrExternalPackageFragmentImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.symbols.*
+import org.jetbrains.kotlin.ir.symbols.impl.DescriptorlessExternalPackageFragmentSymbol
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.types.impl.IrDynamicTypeImpl
 import org.jetbrains.kotlin.ir.util.*
@@ -54,41 +56,17 @@ class JsIrBackendContext(
 
     override var inVerbosePhase: Boolean = false
 
-    override val jsIrDeclarationBuilder: JsIrDeclarationBuilder = JsIrDeclarationBuilder()
+    override val irFactory: IrFactory = PersistentIrFactory
 
     val devMode = configuration[JSConfigurationKeys.DEVELOPER_MODE] ?: false
 
     val externalPackageFragment = mutableMapOf<IrFileSymbol, IrFile>()
     val externalDeclarations = hashSetOf<IrDeclaration>()
 
-    @OptIn(ObsoleteDescriptorBasedAPI::class)
-    val bodilessBuiltInsPackageFragment: IrPackageFragment = run {
-
-        class DescriptorlessExternalPackageFragmentSymbol : IrExternalPackageFragmentSymbol {
-            override val descriptor: PackageFragmentDescriptor
-                get() = error("Operation is unsupported")
-
-            private var _owner: IrExternalPackageFragment? = null
-            override val owner get() = _owner!!
-
-            override val isPublicApi: Boolean
-                get() = TODO("Not yet implemented")
-
-            override val signature: IdSignature
-                get() = TODO("Not yet implemented")
-
-            override val isBound get() = _owner != null
-
-            override fun bind(owner: IrExternalPackageFragment) {
-                _owner = owner
-            }
-        }
-
-        IrExternalPackageFragmentImpl(
-            DescriptorlessExternalPackageFragmentSymbol(),
-            FqName("kotlin")
-        )
-    }
+    val bodilessBuiltInsPackageFragment: IrPackageFragment = IrExternalPackageFragmentImpl(
+        DescriptorlessExternalPackageFragmentSymbol(),
+        FqName("kotlin")
+    )
 
     val packageLevelJsModules = mutableSetOf<IrFile>()
     val declarationLevelJsModules = mutableListOf<IrDeclarationWithName>()
@@ -126,9 +104,12 @@ class JsIrBackendContext(
     fun createTestContainerFun(module: IrModuleFragment): IrSimpleFunction {
         return testContainerFuns.getOrPut(module) {
             val file = syntheticFile("tests", module)
-            jsIrDeclarationBuilder.buildFunction("test fun", irBuiltIns.unitType, file).apply {
-                body = JsIrBuilder.buildBlockBody(emptyList())
-                file.declarations += this
+            irFactory.addFunction(file) {
+                name = Name.identifier("test fun")
+                returnType = irBuiltIns.unitType
+                origin = JsIrBuilder.SYNTHESIZED_DECLARATION
+            }.apply {
+                body = irFactory.createBlockBody(UNDEFINED_OFFSET, UNDEFINED_OFFSET, emptyList())
             }
         }
     }
@@ -137,7 +118,7 @@ class JsIrBackendContext(
         get() = testContainerFuns
 
     override val mapping = JsMapping()
-    val innerClassesSupport = JsInnerClassesSupport(mapping)
+    val innerClassesSupport = JsInnerClassesSupport(mapping, irFactory)
 
     companion object {
         val KOTLIN_PACKAGE_FQN = FqName.fromSegments(listOf("kotlin"))

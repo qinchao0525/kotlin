@@ -1,15 +1,15 @@
+/*
+ * Copyright 2010-2020 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
+ */
+
 package org.jetbrains.kotlin.backend.common.overrides
 
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.impl.IrFakeOverrideFunctionImpl
-import org.jetbrains.kotlin.ir.declarations.impl.IrFakeOverridePropertyImpl
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.util.*
 
 class FakeOverrideCopier(
-    symbolRemapper: SymbolRemapper,
+    private val symbolRemapper: SymbolRemapper,
     private val typeRemapper: TypeRemapper,
     private val symbolRenamer: SymbolRenamer
 ) : DeepCopyIrTreeWithSymbols(symbolRemapper, typeRemapper, symbolRenamer) {
@@ -47,7 +47,7 @@ class FakeOverrideCopier(
         }
 
     override fun visitSimpleFunction(declaration: IrSimpleFunction): IrSimpleFunction =
-        IrFakeOverrideFunctionImpl(
+        declaration.factory.createFakeOverrideFunction(
             declaration.startOffset, declaration.endOffset,
             IrDeclarationOrigin.FAKE_OVERRIDE,
             symbolRenamer.getFunctionName(declaration.symbol),
@@ -67,7 +67,7 @@ class FakeOverrideCopier(
 
 
     override fun visitProperty(declaration: IrProperty): IrProperty =
-        IrFakeOverridePropertyImpl(
+        declaration.factory.createFakeOverrideProperty(
             declaration.startOffset, declaration.endOffset,
             IrDeclarationOrigin.FAKE_OVERRIDE,
             declaration.name,
@@ -83,5 +83,21 @@ class FakeOverrideCopier(
             transformAnnotations(declaration)
             this.getter = declaration.getter?.transform()
             this.setter = declaration.setter?.transform()
+        }
+
+    override fun visitValueParameter(declaration: IrValueParameter): IrValueParameter =
+        declaration.factory.createValueParameter(
+            declaration.startOffset, declaration.endOffset,
+            mapDeclarationOrigin(declaration.origin),
+            symbolRemapper.getDeclaredValueParameter(declaration.symbol),
+            symbolRenamer.getValueParameterName(declaration.symbol),
+            declaration.index,
+            declaration.type.remapType(),
+            declaration.varargElementType?.remapType(),
+            declaration.isCrossinline,
+            declaration.isNoinline
+        ).apply {
+            transformAnnotations(declaration)
+            // Don't set the default value for fake overrides.
         }
 }

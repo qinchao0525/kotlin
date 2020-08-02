@@ -127,7 +127,7 @@ class Fir2IrVisitor(
                     memberGenerator.convertClassContent(correspondingClass, anonymousObject)
                 }
                 val constructor = correspondingClass.constructors.first()
-                irEnumEntry.initializerExpression = IrExpressionBodyImpl(
+                irEnumEntry.initializerExpression = irFactory.createExpressionBody(
                     IrEnumConstructorCallImpl(
                         startOffset, endOffset, enumEntry.returnTypeRef.toIrType(),
                         constructor.symbol,
@@ -144,7 +144,9 @@ class Fir2IrVisitor(
             val delegatedConstructor = primaryConstructor?.delegatedConstructor
             if (delegatedConstructor != null) {
                 with(memberGenerator) {
-                    irEnumEntry.initializerExpression = IrExpressionBodyImpl(delegatedConstructor.toIrDelegatingConstructorCall())
+                    irEnumEntry.initializerExpression = irFactory.createExpressionBody(
+                        delegatedConstructor.toIrDelegatingConstructorCall()
+                    )
                 }
             }
         }
@@ -580,7 +582,7 @@ class Fir2IrVisitor(
     internal fun convertToIrBlockBody(block: FirBlock): IrBlockBody {
         return block.convertWithOffsets { startOffset, endOffset ->
             val irStatements = block.mapToIrStatements()
-            IrBlockBodyImpl(
+            irFactory.createBlockBody(
                 startOffset, endOffset,
                 if (irStatements.isNotEmpty()) {
                     irStatements.filterNotNull().takeIf { it.isNotEmpty() }
@@ -845,9 +847,7 @@ class Fir2IrVisitor(
     override fun visitCatch(catch: FirCatch, data: Any?): IrElement {
         return catch.convertWithOffsets { startOffset, endOffset ->
             val catchParameter = declarationStorage.createIrVariable(catch.parameter, conversionScope.parentFromStack())
-            IrCatchImpl(startOffset, endOffset, catchParameter).apply {
-                result = catch.block.convertToIrExpressionOrBlock()
-            }
+            IrCatchImpl(startOffset, endOffset, catchParameter, catch.block.convertToIrExpressionOrBlock())
         }
     }
 
